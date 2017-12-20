@@ -1,0 +1,106 @@
+---
+title: "A3 - Neighborhood Score: Reloaded"
+author: "Dhvani"
+date: "October 6, 2017"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Problem Statement:
+Implement neighborhood score using Hadoop and MapReduce:
+
+1. Measure the performance on AWS running on 2 and 4 nodes
+
+2. Return the median rather than the mean score of each word's k-neighborhoods
+
+
+### Implementation:
+The entire program is divided into 3 major parts. Each part is run by a map reduce job.
+
+1. In the first part, the mapper reads the input split and counts the number of occurrences of each character in the input. It then outputs each character as key and its occurrences as value. The reducer sums the value for each character and thus we get the output as a character and its total number of occurrences in the corpus. 
+
+2. In the second part, we override isSplitable method to false so that the input doesn't split. In the mapper, we read line by line. It removes all characters except alphabets and space. We split the input with respect to space and thus have all the words in an array. Now we get neighbors of each word and output that. The reducer calculates the score for each word and then ouputs the word and its sum of neighborhood score for each file.
+
+3. In the third and last part, the mapper takes input from the second reducer. It outputs the word as the key and its score as the value. The reducer then calculates the median. It sorts the values and calculates median. It then outputs the word as the key and the mean score as the value.
+
+
+
+### Configuration of the machine used:
+The program was run on AWS EMR. Below is the configuration of the machines used:
+
+Master:
+vCPU: 8
+RAM: 16GB
+Hard Disk: 100GB
+
+Datanodes:
+vCPU: 16
+RAM: 32GB
+Hard Disk: 100GB
+
+
+
+### Result:
+Below are the graphs for running the program with 2 and 4 nodes (big-corpus as the input).
+X-axis displays the jobs in the program i.e. job1 for the first map reduce job in the program and so on.
+Y-axis displays the time taken in minutes to complete map and reduce phase of each job.
+
+The data is average of 2 iterations with k = 2. 
+
+
+``` {r exec-time 2 nodes}
+
+results2 <- read.csv("report a3 2 nodes.csv", header = TRUE)
+
+barplot(as.matrix(results2), main="2 Nodes", ylab= "Time in minutes",
+   beside=TRUE, col=rainbow(2))
+
+legend("topright", c("Map","Reduce"), cex=0.6, 
+   bty="n", fill=rainbow(2));
+
+axis(side=2, at=c(5, 15, 25, 35, 45))
+```
+
+
+
+``` {r exec-time 4 nodes}
+
+results4 <- read.csv("report a3 4 nodes.csv", header = TRUE)
+
+barplot(as.matrix(results4), main="4 Nodes", ylab= "Time in minutes",
+   beside=TRUE, col=rainbow(2))
+
+legend("topright", c("Map","Reduce"), cex=0.6, 
+   bty="n", fill=rainbow(2));
+```
+
+
+(P.S. I ran more iterations. Got the below error
+Error: org.apache.hadoop.util.DiskCheckerDiskErrorException: Could not find any valid local directory for output/attempt_1507306016657_0002_m_000000_0/file.out
+	at org.apache.hadoop.fs.LocalDirAllocator$AllocatorPerContext.getLocalPathForWrite(LocalDirAllocator.java:402)
+	at org.apache.hadoop.fs.LocalDirAllocator.getLocalPathForWrite(LocalDirAllocator.java:150)
+	at org.apache.hadoop.fs.LocalDirAllocator.getLocalPathForWrite(LocalDirAllocator.java:131)
+	at org.apache.hadoop.mapred.YarnOutputFiles.getOutputFileForWrite(YarnOutputFiles.java:84)
+	at org.apache.hadoop.mapred.MapTaskMapOutputBuffer.mergeParts(MapTask.java:1859)
+	at org.apache.hadoop.mapred.MapTaskMapOutputBuffer.flush(MapTask.java:1529)
+	at org.apache.hadoop.mapred.MapTaskNewOutputCollector.close(MapTask.java:732)
+	at org.apache.hadoop.mapred.MapTask.runNewMapper(MapTask.java:802)
+	at org.apache.hadoop.mapred.MapTask.run(MapTask.java:342)
+	at org.apache.hadoop.mapred.YarnChild$2.run(YarnChild.java:164)
+	at java.security.AccessController.doPrivileged(Native Method)
+	at javax.security.auth.Subject.doAs(Subject.java:422)
+	at org.apache.hadoop.security.UserGroupInformation.doAs(UserGroupInformation.java:1698)
+	at org.apache.hadoop.mapred.YarnChild.main(YarnChild.java:158))
+	
+	
+
+### Conclusion:
+The average total exceution time when running with 2 nodes was 90 minutes and that with 4 nodes was 48 minutes.
+So the time taken to run with 4 nodes was almost half of the time taken to run with 2 nodes. Also, for every map and reduce phase in each job, the time taken with 4 nodes is half of the time taken with 2 nodes.
+This can be because when running with 4 nodes, it had double the RAM and vCPU's, so double processing power. Shuffle time would have been more in 4 nodes, however majority of the time consuming task is done in map phase and specifically in 2nd job's map phase. Thus the shuffling time taken with 4 nodes did not make much of an impact.
+To conclude; with respect to running the job with 2 and 4 nodes, running the job with 4 nodes is better than that with 2 nodes. However, I also feel that a threshold will be reached at some point after which even after adding more CPUs won't make a difference as shuffle time would have an impact on the performance then.
+
